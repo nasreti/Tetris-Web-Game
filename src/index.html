@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <!-- Username -->
     <div id="usernameModal" class="modal">
       <form id="usernameForm" class="modal-card">
         <h2>Welcome</h2>
@@ -25,137 +24,138 @@
       </form>
     </div>
 
-    <!-- osu-style browse menu -->
-    <div id="menuScreen" class="menu-screen hidden">
-      <div class="menu-bg-blur"></div>
+    <!-- TETR.IO–style main menu -->
+    <div id="menuScreen" class="menu-screen menu-tetro hidden">
+      <div id="menuNatureBg" class="menu-nature-bg" aria-hidden="true"></div>
+      <div class="menu-nature-overlay"></div>
 
-      <header class="menu-top">
-        <nav class="menu-top-icons" aria-label="Quick nav">
-          <button type="button" class="icon-btn" title="Home">⌂</button>
-          <button type="button" class="icon-btn" title="Play">▶</button>
-          <button type="button" class="icon-btn" title="Settings">⚙</button>
+      <div class="menu-tetro-inner">
+        <nav class="tetro-stack" aria-label="Main menu">
+          <button type="button" class="tetro-row tetro-mp" disabled data-action="none">
+            <span class="tetro-icon" aria-hidden="true">MP</span>
+            <span class="tetro-text">
+              <span class="tetro-title">MULTIPLAYER</span>
+              <span class="tetro-sub">PLAY ONLINE — COMING SOON</span>
+            </span>
+          </button>
+
+          <button type="button" class="tetro-row tetro-solo" data-mode="lines40">
+            <span class="tetro-icon" aria-hidden="true">40</span>
+            <span class="tetro-text">
+              <span class="tetro-title">40 LINES</span>
+              <span class="tetro-sub">SPRINT — CLEAR 40 LINES AS FAST AS YOU CAN</span>
+            </span>
+          </button>
+
+          <button type="button" class="tetro-row tetro-blitz" data-mode="blitz">
+            <span class="tetro-icon" aria-hidden="true">BZ</span>
+            <span class="tetro-text">
+              <span class="tetro-title">BLITZ</span>
+              <span class="tetro-sub">TWO MINUTES — RACE FOR THE HIGHEST SCORE</span>
+            </span>
+          </button>
+
+          <button type="button" class="tetro-row tetro-endless" data-mode="endless">
+            <span class="tetro-icon" aria-hidden="true">∞</span>
+            <span class="tetro-text">
+              <span class="tetro-title">ENDLESS</span>
+              <span class="tetro-sub">CLASSIC MARATHON — LEVEL UP AND SURVIVE</span>
+            </span>
+          </button>
+
+          <button type="button" class="tetro-row tetro-records" id="openRecordsBtn">
+            <span class="tetro-icon" aria-hidden="true">LB</span>
+            <span class="tetro-text">
+              <span class="tetro-title">RECORDS</span>
+              <span class="tetro-sub">LOCAL BEST TIMES AND BLITZ SCORES</span>
+            </span>
+          </button>
+
+          <button type="button" class="tetro-row tetro-config" id="openAboutBtn">
+            <span class="tetro-icon" aria-hidden="true">?</span>
+            <span class="tetro-text">
+              <span class="tetro-title">ABOUT</span>
+              <span class="tetro-sub">TETRIS WEB — SINGLE PLAYER PRACTICE</span>
+            </span>
+          </button>
         </nav>
-        <div class="menu-search-wrap">
-          <input type="search" class="menu-search" placeholder="search modes..." aria-label="Search" />
-          <span class="search-icon">🔍</span>
-        </div>
-        <div class="menu-user">
-          <span id="menuUsername" class="menu-username">Player</span>
-          <span class="menu-avatar" aria-hidden="true"></span>
-          <time id="menuClock" class="menu-clock"></time>
-        </div>
-      </header>
-
-      <div class="menu-body">
-        <aside class="menu-left">
-          <div class="mode-detail-card">
-            <h2 id="detailTitle" class="detail-title">40 Lines</h2>
-            <p id="detailDesc" class="detail-desc">
-              Clear 40 lines as fast as you can. Timer starts when the round begins.
-            </p>
-            <div class="detail-meta">
-              <span id="detailTag">SPRINT</span>
-            </div>
-          </div>
-          <div class="leaderboard-placeholder">
-            <h3>Ranking</h3>
-            <p class="lb-hint">Local scores — play to set a record.</p>
-            <ul id="leaderboardList" class="lb-list"></ul>
-          </div>
-        </aside>
-
-        <section class="menu-right">
-          <h3 class="modes-heading">Game modes</h3>
-          <div id="modeList" class="mode-cards" role="listbox" aria-label="Select game mode">
-            <button type="button" class="mode-card is-selected" data-mode="lines40" role="option" aria-selected="true">
-              <div class="mode-card-bg mode-bg-sprint"></div>
-              <div class="mode-card-body">
-                <span class="mode-badge sprint">SPRINT</span>
-                <span class="mode-name">40 Lines</span>
-                <span class="mode-sub">40 lines · best time</span>
-              </div>
-            </button>
-            <button type="button" class="mode-card" data-mode="blitz" role="option" aria-selected="false">
-              <div class="mode-card-bg mode-bg-blitz"></div>
-              <div class="mode-card-body">
-                <span class="mode-badge blitz">BLITZ</span>
-                <span class="mode-name">Blitz</span>
-                <span class="mode-sub">2:00 · highest score</span>
-              </div>
-            </button>
-            <button type="button" class="mode-card" data-mode="endless" role="option" aria-selected="false">
-              <div class="mode-card-bg mode-bg-endless"></div>
-              <div class="mode-card-body">
-                <span class="mode-badge endless">ENDLESS</span>
-                <span class="mode-name">Endless</span>
-                <span class="mode-sub">Classic · level up</span>
-              </div>
-            </button>
-          </div>
-        </section>
       </div>
 
-      <footer class="menu-bottom">
-        <button type="button" id="backFromMenuBtn" class="btn-back">← Back</button>
-        <div class="menu-bottom-center">
-          <button type="button" class="mini-action" disabled title="Coming soon">Mods</button>
-          <button type="button" class="mini-action" disabled title="Coming soon">Random</button>
-          <button type="button" class="mini-action" disabled title="Coming soon">Options</button>
-        </div>
-        <button type="button" id="playButton" class="btn-play-main">Play</button>
-        <div class="menu-osu-logo" aria-hidden="true">tetris!</div>
+      <div class="menu-brand">TETRIS WEB</div>
+
+      <footer class="menu-tetro-status">
+        <span id="menuUsername" class="menu-status-user">Player</span>
+        <span class="menu-status-dots" aria-hidden="true"></span>
       </footer>
     </div>
 
-    <!-- Sprint-style game -->
+    <div id="recordsModal" class="modal hidden">
+      <div class="modal-card records-card">
+        <h2>Records</h2>
+        <p class="records-hint">Stored on this device only.</p>
+        <ul id="leaderboardList" class="lb-list"></ul>
+        <button type="button" id="recordsClose" class="records-close-btn">Close</button>
+      </div>
+    </div>
+
+    <div id="aboutModal" class="modal hidden">
+      <div class="modal-card">
+        <h2>About</h2>
+        <p>Tetris Web Game — practice modes in your browser. Not affiliated with Tetris Holding or TETR.IO.</p>
+        <button type="button" id="aboutClose">Close</button>
+      </div>
+    </div>
+
     <div id="gameScreen" class="game-screen hidden">
-      <div class="game-bg" aria-hidden="true"></div>
+      <div id="gameNatureBg" class="game-bg" aria-hidden="true"></div>
       <div class="game-overlay"></div>
 
-      <header class="game-top">
-        <button type="button" id="backToMenuBtn" class="btn-game-back">← Menu</button>
-        <span id="gameModeLabel" class="game-mode-label">40 Lines</span>
-        <span class="game-player"><span id="playerName"></span></span>
-      </header>
+      <div id="gameGuiRoot" class="game-gui-root">
+        <header class="game-top">
+          <button type="button" id="backToMenuBtn" class="btn-game-back">← Menu</button>
+          <span id="gameModeLabel" class="game-mode-label">40 Lines</span>
+          <span class="game-player"><span id="playerName"></span></span>
+        </header>
 
-      <div class="game-stage">
-        <div class="panel-hold panel-clip-left">
-          <span class="panel-label">HOLD</span>
-          <canvas id="holdCanvas" width="120" height="120" aria-label="Hold piece"></canvas>
+        <div class="game-stage">
+          <div class="panel-hold panel-clip-left">
+            <span class="panel-label">HOLD</span>
+            <canvas id="holdCanvas" width="120" height="120" aria-label="Hold piece"></canvas>
+          </div>
+
+          <div class="board-wrap">
+            <canvas id="board" width="300" height="600" aria-label="Tetris board"></canvas>
+          </div>
+
+          <div class="panel-next panel-clip-right">
+            <span class="panel-label">NEXT</span>
+            <div id="nextQueue" class="next-queue"></div>
+          </div>
         </div>
 
-        <div class="board-wrap">
-          <canvas id="board" width="300" height="600" aria-label="Tetris board"></canvas>
-        </div>
-
-        <div class="panel-next panel-clip-right">
-          <span class="panel-label">NEXT</span>
-          <div id="nextQueue" class="next-queue"></div>
-        </div>
-      </div>
-
-      <div class="game-stats">
-        <div class="stat-block">
-          <span class="stat-label">PIECES</span>
-          <span id="statPieces" class="stat-value">0</span>
-          <span id="statPps" class="stat-sub">0.00/S</span>
-        </div>
-        <div class="stat-block">
-          <span class="stat-label" id="linesLabel">LINES</span>
-          <span id="statLines" class="stat-value">0</span>
-          <span id="linesGoal" class="stat-sub"></span>
-        </div>
-        <div class="stat-block stat-time">
-          <span class="stat-label" id="timeLabel">TIME</span>
-          <span id="statTime" class="stat-value-big">0:00.000</span>
-        </div>
-        <div class="stat-block endless-only hidden">
-          <span class="stat-label">SCORE</span>
-          <span id="statScore" class="stat-value">0</span>
-        </div>
-        <div class="stat-block endless-only hidden">
-          <span class="stat-label">LEVEL</span>
-          <span id="statLevel" class="stat-value">1</span>
+        <div class="game-stats">
+          <div class="stat-block">
+            <span class="stat-label">PIECES</span>
+            <span id="statPieces" class="stat-value">0</span>
+            <span id="statPps" class="stat-sub">0.00/S</span>
+          </div>
+          <div class="stat-block">
+            <span class="stat-label" id="linesLabel">LINES</span>
+            <span id="statLines" class="stat-value">0</span>
+            <span id="linesGoal" class="stat-sub"></span>
+          </div>
+          <div class="stat-block stat-time">
+            <span class="stat-label" id="timeLabel">TIME</span>
+            <span id="statTime" class="stat-value-big">0:00.000</span>
+          </div>
+          <div class="stat-block endless-only hidden">
+            <span class="stat-label">SCORE</span>
+            <span id="statScore" class="stat-value">0</span>
+          </div>
+          <div class="stat-block endless-only hidden">
+            <span class="stat-label">LEVEL</span>
+            <span id="statLevel" class="stat-value">1</span>
+          </div>
         </div>
       </div>
 

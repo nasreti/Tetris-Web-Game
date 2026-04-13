@@ -56,24 +56,37 @@ const SHAPES = {
 
 const MODE_INFO = {
   lines40: {
-    title: "40 Lines",
-    desc: "Clear 40 lines as fast as you can. The timer starts when the round begins.",
-    tag: "SPRINT",
     label: "40 Lines"
   },
   blitz: {
-    title: "Blitz",
-    desc: "Two minutes on the clock — score as high as you can before time runs out.",
-    tag: "BLITZ",
     label: "Blitz"
   },
   endless: {
-    title: "Endless",
-    desc: "Classic Tetris: level increases as you clear lines. Survive as long as you can.",
-    tag: "ENDLESS",
     label: "Endless"
   }
 };
+
+/** Curated nature photos (Unsplash) — random each session / game */
+const NATURE_BACKGROUNDS = [
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1920&q=80",
+  "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1920&q=80",
+  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80",
+  "https://images.unsplash.com/photo-1518173946684-a395c4c0d5b6?auto=format&fit=crop&w=1920&q=80",
+  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80",
+  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1920&q=80",
+  "https://images.unsplash.com/photo-1433086966358-54859d0ed716?auto=format&fit=crop&w=1920&q=80",
+  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80"
+];
+
+function randomNatureImageUrl() {
+  return NATURE_BACKGROUNDS[Math.floor(Math.random() * NATURE_BACKGROUNDS.length)];
+}
+
+function applyNatureBackground(el) {
+  if (!el) return;
+  const url = randomNatureImageUrl();
+  el.style.backgroundImage = `linear-gradient(0deg, rgba(6, 10, 20, 0.25), rgba(6, 10, 20, 0.35)), url("${url}")`;
+}
 
 const boardCanvas = document.getElementById("board");
 const ctx = boardCanvas.getContext("2d");
@@ -86,14 +99,19 @@ const usernameModal = document.getElementById("usernameModal");
 const usernameForm = document.getElementById("usernameForm");
 const usernameInput = document.getElementById("usernameInput");
 const menuScreen = document.getElementById("menuScreen");
+const menuNatureBg = document.getElementById("menuNatureBg");
 const gameScreen = document.getElementById("gameScreen");
-const playButton = document.getElementById("playButton");
+const gameNatureBg = document.getElementById("gameNatureBg");
+const gameGuiRoot = document.getElementById("gameGuiRoot");
 const backToMenuBtn = document.getElementById("backToMenuBtn");
-const backFromMenuBtn = document.getElementById("backFromMenuBtn");
 const playerName = document.getElementById("playerName");
 const menuUsername = document.getElementById("menuUsername");
-const menuClock = document.getElementById("menuClock");
 const gameModeLabel = document.getElementById("gameModeLabel");
+const recordsModal = document.getElementById("recordsModal");
+const aboutModal = document.getElementById("aboutModal");
+const openRecordsBtn = document.getElementById("openRecordsBtn");
+const recordsClose = document.getElementById("recordsClose");
+const aboutClose = document.getElementById("aboutClose");
 const nextQueueEl = document.getElementById("nextQueue");
 const countdownOverlay = document.getElementById("countdownOverlay");
 const countdownText = document.getElementById("countdownText");
@@ -111,9 +129,6 @@ const timeLabel = document.getElementById("timeLabel");
 const linesLabel = document.getElementById("linesLabel");
 const statScore = document.getElementById("statScore");
 const statLevel = document.getElementById("statLevel");
-const detailTitle = document.getElementById("detailTitle");
-const detailDesc = document.getElementById("detailDesc");
-const detailTag = document.getElementById("detailTag");
 const leaderboardList = document.getElementById("leaderboardList");
 
 const endlessStatBlocks = document.querySelectorAll(".endless-only");
@@ -139,7 +154,9 @@ let holdUsed = false;
 let pieceBag = [];
 let previewTypes = [];
 
-let keysDown = { down: false };
+let keysDown = { down: false, left: false };
+let leftGuiHoldTimer = null;
+const LEFT_GUI_HOLD_MS = 140;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -234,7 +251,7 @@ function drawBeveledCell(cx, x, y, baseHex, opts = {}) {
 }
 
 function drawGridLines(cx) {
-  cx.strokeStyle = "rgba(255,255,255,0.08)";
+  cx.strokeStyle = "rgba(255,255,255,0.055)";
   cx.lineWidth = 0.02;
   for (let x = 0; x <= COLS; x += 1) {
     cx.beginPath();
@@ -266,7 +283,7 @@ function getGhostY(piece) {
 
 function drawBoard() {
   ctx.clearRect(0, 0, COLS, ROWS);
-  ctx.fillStyle = "rgba(5, 8, 18, 0.35)";
+  ctx.fillStyle = "rgba(4, 8, 18, 0.22)";
   ctx.fillRect(0, 0, COLS, ROWS);
   drawGridLines(ctx);
 
@@ -664,15 +681,18 @@ function runCountdown() {
   showNext();
 }
 
-function openGameFromMenu() {
+function openGameFromMenu(mode) {
+  if (mode) {
+    selectedMode = mode;
+  }
   if (!username) {
     usernameModal.classList.remove("hidden");
     usernameInput.focus();
     return;
   }
+  applyNatureBackground(gameNatureBg);
   menuScreen.classList.add("hidden");
   gameScreen.classList.remove("hidden");
-  gameModeLabel.textContent = MODE_INFO[selectedMode].label;
   playerName.textContent = username;
   applyModeUi();
   runCountdown();
@@ -680,16 +700,26 @@ function openGameFromMenu() {
 
 function applyModeUi() {
   const info = MODE_INFO[selectedMode];
-  detailTitle.textContent = info.title;
   gameModeLabel.textContent = info.label;
+}
+
+function clearLeftGuiNudge() {
+  if (leftGuiHoldTimer) {
+    clearTimeout(leftGuiHoldTimer);
+    leftGuiHoldTimer = null;
+  }
+  keysDown.left = false;
+  if (gameGuiRoot) gameGuiRoot.classList.remove("gui-nudge-left");
 }
 
 function returnToMenu() {
   gameRunning = false;
   countingDown = false;
+  clearLeftGuiNudge();
   countdownOverlay.classList.add("hidden");
   gameScreen.classList.add("hidden");
   menuScreen.classList.remove("hidden");
+  applyNatureBackground(menuNatureBg);
   resultModal.classList.add("hidden");
 }
 
@@ -792,6 +822,15 @@ document.addEventListener("keydown", (e) => {
   }
   if (e.key === "ArrowLeft") {
     movePiece(-1);
+    if (gameGuiRoot && !keysDown.left) {
+      keysDown.left = true;
+      leftGuiHoldTimer = setTimeout(() => {
+        leftGuiHoldTimer = null;
+        if (gameGuiRoot && gameRunning && !paused && keysDown.left) {
+          gameGuiRoot.classList.add("gui-nudge-left");
+        }
+      }, LEFT_GUI_HOLD_MS);
+    }
     e.preventDefault();
   }
   if (e.key === "ArrowRight") {
@@ -817,6 +856,7 @@ document.addEventListener("keydown", (e) => {
 
 document.addEventListener("keyup", (e) => {
   if (e.key === "ArrowDown") keysDown.down = false;
+  if (e.key === "ArrowLeft") clearLeftGuiNudge();
 });
 
 usernameForm.addEventListener("submit", (event) => {
@@ -828,19 +868,36 @@ usernameForm.addEventListener("submit", (event) => {
   menuUsername.textContent = username;
   usernameModal.classList.add("hidden");
   menuScreen.classList.remove("hidden");
+  applyNatureBackground(menuNatureBg);
   refreshLeaderboard();
 });
 
-playButton.addEventListener("click", () => {
-  openGameFromMenu();
+document.querySelectorAll(".tetro-row[data-mode]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    openGameFromMenu(btn.dataset.mode);
+  });
+});
+
+openRecordsBtn.addEventListener("click", () => {
+  refreshLeaderboard();
+  recordsModal.classList.remove("hidden");
+});
+
+recordsClose.addEventListener("click", () => {
+  recordsModal.classList.add("hidden");
+});
+
+const openAboutBtn = document.getElementById("openAboutBtn");
+openAboutBtn.addEventListener("click", () => {
+  aboutModal.classList.remove("hidden");
+});
+
+aboutClose.addEventListener("click", () => {
+  aboutModal.classList.add("hidden");
 });
 
 backToMenuBtn.addEventListener("click", () => {
   returnToMenu();
-});
-
-backFromMenuBtn.addEventListener("click", () => {
-  /* optional: could minimize app */
 });
 
 resultOk.addEventListener("click", () => {
@@ -848,36 +905,11 @@ resultOk.addEventListener("click", () => {
   returnToMenu();
 });
 
-document.querySelectorAll(".mode-card").forEach((card) => {
-  card.addEventListener("click", () => {
-    document.querySelectorAll(".mode-card").forEach((c) => {
-      c.classList.remove("is-selected");
-      c.setAttribute("aria-selected", "false");
-    });
-    card.classList.add("is-selected");
-    card.setAttribute("aria-selected", "true");
-    selectedMode = card.dataset.mode;
-    const info = MODE_INFO[selectedMode];
-    detailTitle.textContent = info.title;
-    detailDesc.textContent = info.desc;
-    detailTag.textContent = info.tag;
-  });
+window.addEventListener("blur", () => {
+  keysDown.down = false;
+  clearLeftGuiNudge();
 });
-
-function tickMenuClock() {
-  const d = new Date();
-  menuClock.textContent = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-setInterval(tickMenuClock, 1000);
-tickMenuClock();
 
 window.addEventListener("load", () => {
   usernameInput.focus();
-  const first = document.querySelector('.mode-card[data-mode="lines40"]');
-  if (first) {
-    const info = MODE_INFO.lines40;
-    detailTitle.textContent = info.title;
-    detailDesc.textContent = info.desc;
-    detailTag.textContent = info.tag;
-  }
 });
