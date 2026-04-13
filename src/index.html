@@ -117,45 +117,66 @@
           <span class="game-player"><span id="playerName"></span></span>
         </header>
 
-        <div class="game-stage">
-          <div class="panel-hold panel-clip-left">
-            <span class="panel-label">HOLD</span>
-            <canvas id="holdCanvas" width="120" height="120" aria-label="Hold piece"></canvas>
-          </div>
+        <div class="game-play-layout">
+          <aside class="game-timer-aside" aria-label="Timer">
+            <div class="game-timer-block">
+              <span class="stat-label" id="timeLabel">TIME</span>
+              <span id="statTime" class="stat-value-big">0:00.000</span>
+            </div>
+          </aside>
 
-          <div class="board-wrap">
-            <canvas id="board" width="300" height="600" aria-label="Tetris board"></canvas>
-          </div>
+          <div class="game-center-column">
+            <div class="game-stage">
+              <div class="panel-hold panel-clip-left">
+                <span class="panel-label">HOLD</span>
+                <canvas id="holdCanvas" width="140" height="140" aria-label="Hold piece"></canvas>
+              </div>
 
-          <div class="panel-next panel-clip-right">
-            <span class="panel-label">NEXT</span>
-            <div id="nextQueue" class="next-queue"></div>
+              <div id="boardStack" class="board-stack">
+                <div class="board-wrap">
+                  <canvas id="board" width="380" height="760" aria-label="Tetris board"></canvas>
+                </div>
+                <div class="board-progress-col" aria-hidden="true">
+                  <div class="board-progress-track">
+                    <div id="lineProgressFill" class="board-progress-fill"></div>
+                  </div>
+                  <span class="board-progress-arrow">▲</span>
+                </div>
+              </div>
+
+              <div class="panel-next panel-clip-right">
+                <span class="panel-label">NEXT</span>
+                <div id="nextQueue" class="next-queue"></div>
+              </div>
+            </div>
+
+            <div class="game-stats game-stats--no-time">
+              <div class="stat-block">
+                <span class="stat-label">PIECES</span>
+                <span id="statPieces" class="stat-value">0</span>
+                <span id="statPps" class="stat-sub">0.00/S</span>
+              </div>
+              <div class="stat-block">
+                <span class="stat-label" id="linesLabel">LINES</span>
+                <span id="statLines" class="stat-value">0</span>
+                <span id="linesGoal" class="stat-sub"></span>
+              </div>
+              <div class="stat-block endless-only hidden">
+                <span class="stat-label">SCORE</span>
+                <span id="statScore" class="stat-value">0</span>
+              </div>
+              <div class="stat-block endless-only hidden">
+                <span class="stat-label">LEVEL</span>
+                <span id="statLevel" class="stat-value">1</span>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="game-stats">
-          <div class="stat-block">
-            <span class="stat-label">PIECES</span>
-            <span id="statPieces" class="stat-value">0</span>
-            <span id="statPps" class="stat-sub">0.00/S</span>
-          </div>
-          <div class="stat-block">
-            <span class="stat-label" id="linesLabel">LINES</span>
-            <span id="statLines" class="stat-value">0</span>
-            <span id="linesGoal" class="stat-sub"></span>
-          </div>
-          <div class="stat-block stat-time">
-            <span class="stat-label" id="timeLabel">TIME</span>
-            <span id="statTime" class="stat-value-big">0:00.000</span>
-          </div>
-          <div class="stat-block endless-only hidden">
-            <span class="stat-label">SCORE</span>
-            <span id="statScore" class="stat-value">0</span>
-          </div>
-          <div class="stat-block endless-only hidden">
-            <span class="stat-label">LEVEL</span>
-            <span id="statLevel" class="stat-value">1</span>
-          </div>
+      <div id="modeBannerOverlay" class="mode-banner-overlay hidden">
+        <div class="mode-banner-strip">
+          <span id="modeBannerText" class="mode-banner-text">CLEAR 40 LINES!</span>
         </div>
       </div>
 

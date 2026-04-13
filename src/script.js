@@ -1,6 +1,8 @@
 const COLS = 10;
 const ROWS = 20;
-const BLOCK_SIZE = 30;
+const BLOCK_SIZE = 38;
+const LOCK_FLASH_MS = 260;
+const LINE_CLEAR_FLASH_MS = 420;
 const LINE_GOAL_40 = 40;
 const BLITZ_MS = 120000;
 const SPRINT_DROP_MS = 520;
@@ -56,13 +58,16 @@ const SHAPES = {
 
 const MODE_INFO = {
   lines40: {
-    label: "40 Lines"
+    label: "40 Lines",
+    bannerText: "CLEAR 40 LINES!"
   },
   blitz: {
-    label: "Blitz"
+    label: "Blitz",
+    bannerText: "BLITZ — RACE THE CLOCK!"
   },
   endless: {
-    label: "Endless"
+    label: "Endless",
+    bannerText: "ENDLESS — SURVIVE & CLIMB!"
   }
 };
 
@@ -90,7 +95,15 @@ function applyNatureBackground(el) {
 
 const boardCanvas = document.getElementById("board");
 const ctx = boardCanvas.getContext("2d");
-ctx.scale(BLOCK_SIZE, BLOCK_SIZE);
+
+function syncBoardCanvasSize() {
+  boardCanvas.width = COLS * BLOCK_SIZE;
+  boardCanvas.height = ROWS * BLOCK_SIZE;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(BLOCK_SIZE, BLOCK_SIZE);
+}
+
+syncBoardCanvasSize();
 
 const holdCanvas = document.getElementById("holdCanvas");
 const holdCtx = holdCanvas.getContext("2d");
@@ -130,8 +143,16 @@ const linesLabel = document.getElementById("linesLabel");
 const statScore = document.getElementById("statScore");
 const statLevel = document.getElementById("statLevel");
 const leaderboardList = document.getElementById("leaderboardList");
+const modeBannerOverlay = document.getElementById("modeBannerOverlay");
+const modeBannerText = document.getElementById("modeBannerText");
+const lineProgressFill = document.getElementById("lineProgressFill");
+const boardStackEl = document.getElementById("boardStack");
 
 const endlessStatBlocks = document.querySelectorAll(".endless-only");
+
+let lockFlashCells = null;
+let lockFlashT0 = 0;
+let lineClearFlashT0 = 0;
 
 let username = "";
 let selectedMode = "lines40";
@@ -155,8 +176,6 @@ let pieceBag = [];
 let previewTypes = [];
 
 let keysDown = { down: false, left: false };
-let leftGuiHoldTimer = null;
-const LEFT_GUI_HOLD_MS = 140;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -315,6 +334,33 @@ function drawBoard() {
       });
     });
   }
+
+  const now = performance.now();
+
+  if (lockFlashCells && now - lockFlashT0 < LOCK_FLASH_MS) {
+    const t = (now - lockFlashT0) / LOCK_FLASH_MS;
+    const alpha = Math.sin(t * Math.PI) * 0.52;
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    lockFlashCells.forEach(({ x, y }) => {
+      if (y >= 0 && y < ROWS && x >= 0 && x < COLS) {
+        ctx.fillRect(x, y, 1, 1);
+      }
+    });
+  } else if (lockFlashCells) {
+    lockFlashCells = null;
+  }
+
+  if (lineClearFlashT0 > 0) {
+    const elapsed = now - lineClearFlashT0;
+    if (elapsed < LINE_CLEAR_FLASH_MS) {
+      const t = elapsed / LINE_CLEAR_FLASH_MS;
+      const alpha = 0.48 * Math.sin(t * Math.PI);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fillRect(0, 0, COLS, ROWS);
+    } else {
+      lineClearFlashT0 = 0;
+    }
+  }
 }
 
 function collides(piece) {
@@ -333,44 +379,86 @@ function collides(piece) {
   );
 }
 
+function canMoveLeft(piece) {
+  if (!piece) return false;
+  const test = {
+    type: piece.type,
+    shape: piece.shape.map((r) => [...r]),
+    x: piece.x - 1,
+    y: piece.y
+  };
+  return !collides(test);
+}
+
 function mergePiece() {
-  currentPiece.shape.forEach((row, y) => {
-    row.forEach((value, x) => {
+  const flashCells = [];
+  currentPiece.shape.forEach((row, dy) => {
+    row.forEach((value, dx) => {
       if (value) {
-        board[currentPiece.y + y][currentPiece.x + x] = currentPiece.type;
+        const bx = currentPiece.x + dx;
+        const by = currentPiece.y + dy;
+        board[by][bx] = currentPiece.type;
+        flashCells.push({ x: bx, y: by });
       }
     });
   });
   piecesPlaced += 1;
+  triggerLockFx(flashCells);
+}
+
+function triggerLockFx(cells) {
+  lockFlashCells = cells;
+  lockFlashT0 = performance.now();
+  if (boardStackEl) {
+    boardStackEl.classList.remove("fx-shake-lock");
+    boardStackEl.offsetWidth;
+    boardStackEl.classList.add("fx-shake-lock");
+  }
+}
+
+function triggerLineClearFx() {
+  lineClearFlashT0 = performance.now();
+  if (boardStackEl) {
+    boardStackEl.classList.remove("fx-shake-line");
+    boardStackEl.offsetWidth;
+    boardStackEl.classList.add("fx-shake-line");
+  }
 }
 
 function clearLines() {
-  let cleared = 0;
-  outer: for (let y = ROWS - 1; y >= 0; y -= 1) {
+  const rowsToClear = [];
+  for (let y = ROWS - 1; y >= 0; y -= 1) {
+    let full = true;
     for (let x = 0; x < COLS; x += 1) {
       if (!board[y][x]) {
-        continue outer;
+        full = false;
+        break;
       }
     }
-    board.splice(y, 1);
-    board.unshift(Array(COLS).fill(0));
-    cleared += 1;
-    y += 1;
+    if (full) rowsToClear.push(y);
   }
 
-  if (cleared > 0) {
-    if (selectedMode === "endless" || selectedMode === "blitz") {
-      const scoring = [0, 100, 300, 500, 800];
-      score += scoring[cleared] * level;
-      lines += cleared;
-      level = Math.floor(lines / 10) + 1;
-      dropInterval = Math.max(120, BLITZ_BASE_DROP_MS - (level - 1) * 55);
-    } else {
-      lines += cleared;
-    }
-    updateHud();
-    checkWinLose();
+  const cleared = rowsToClear.length;
+  if (cleared === 0) return;
+
+  triggerLineClearFx();
+
+  for (const y of rowsToClear.sort((a, b) => b - a)) {
+    board.splice(y, 1);
+    board.unshift(Array(COLS).fill(0));
   }
+
+  if (selectedMode === "endless" || selectedMode === "blitz") {
+    const scoring = [0, 100, 300, 500, 800];
+    score += scoring[cleared] * level;
+    lines += cleared;
+    level = Math.floor(lines / 10) + 1;
+    dropInterval = Math.max(120, BLITZ_BASE_DROP_MS - (level - 1) * 55);
+  } else {
+    lines += cleared;
+  }
+  updateHud();
+  checkWinLose();
 }
 
 function checkWinLose() {
@@ -382,6 +470,7 @@ function checkWinLose() {
 
 function endGameWin40() {
   gameRunning = false;
+  releaseLeftKey();
   const elapsed = performance.now() - gameStartPerf;
   saveBestTime(username, elapsed);
   showResult("40 Lines clear!", `Time: ${formatTimeMs(elapsed)}`);
@@ -389,12 +478,14 @@ function endGameWin40() {
 
 function endGameBlitzTime() {
   gameRunning = false;
+  releaseLeftKey();
   saveBestBlitz(username, score);
   showResult("Time's up!", `Final score: ${score.toLocaleString()}`);
 }
 
 function endGameOver() {
   gameRunning = false;
+  releaseLeftKey();
   if (selectedMode === "blitz") {
     saveBestBlitz(username, score);
   }
@@ -480,8 +571,8 @@ function buildNextPreviews() {
   nextQueueEl.innerHTML = "";
   nextCanvases = [];
   const show = previewTypes.slice(0, 5);
-  const cw = 100;
-  const ch = 72;
+  const cw = 118;
+  const ch = 82;
   show.forEach((type) => {
     const c = document.createElement("canvas");
     c.className = "next-preview";
@@ -578,6 +669,22 @@ function formatTimeRemaining(ms) {
   return formatTimeMs(ms);
 }
 
+function updateLineProgress() {
+  if (!lineProgressFill) return;
+  let pct = 0;
+  if (selectedMode === "lines40") {
+    pct = Math.min(1, lines / LINE_GOAL_40);
+  } else if (selectedMode === "blitz") {
+    if (gameRunning && blitzEndPerf > 0) {
+      const left = Math.max(0, blitzEndPerf - performance.now());
+      pct = 1 - left / BLITZ_MS;
+    }
+  } else {
+    pct = Math.min(1, lines / 120);
+  }
+  lineProgressFill.style.height = `${Math.max(0, Math.min(1, pct)) * 100}%`;
+}
+
 function updateHud() {
   statPieces.textContent = String(piecesPlaced);
   const elapsedSec = gameRunning ? (performance.now() - gameStartPerf) / 1000 : 0;
@@ -610,6 +717,21 @@ function updateHud() {
     statScore.textContent = String(score);
     statLevel.textContent = String(level);
   }
+  updateLineProgress();
+}
+
+function updateWallGuiNudge() {
+  if (!gameGuiRoot) return;
+  if (!gameRunning || countingDown || !currentPiece) {
+    gameGuiRoot.classList.remove("gui-nudge-left");
+    return;
+  }
+  const blockedLeft = !canMoveLeft(currentPiece);
+  if (keysDown.left && blockedLeft) {
+    gameGuiRoot.classList.add("gui-nudge-left");
+  } else {
+    gameGuiRoot.classList.remove("gui-nudge-left");
+  }
 }
 
 function applyModeRules() {
@@ -634,6 +756,12 @@ function resetRound() {
   dropCounter = 0;
   holdType = null;
   holdUsed = false;
+  lockFlashCells = null;
+  lockFlashT0 = 0;
+  lineClearFlashT0 = 0;
+  if (boardStackEl) {
+    boardStackEl.classList.remove("fx-shake-lock", "fx-shake-line");
+  }
   previewTypes = [];
   refillBag();
   ensurePreview();
@@ -695,7 +823,18 @@ function openGameFromMenu(mode) {
   gameScreen.classList.remove("hidden");
   playerName.textContent = username;
   applyModeUi();
-  runCountdown();
+  showModeBannerThenCountdown();
+}
+
+function showModeBannerThenCountdown() {
+  if (modeBannerText) {
+    modeBannerText.textContent = MODE_INFO[selectedMode].bannerText;
+  }
+  if (modeBannerOverlay) modeBannerOverlay.classList.remove("hidden");
+  setTimeout(() => {
+    if (modeBannerOverlay) modeBannerOverlay.classList.add("hidden");
+    runCountdown();
+  }, 2400);
 }
 
 function applyModeUi() {
@@ -703,11 +842,7 @@ function applyModeUi() {
   gameModeLabel.textContent = info.label;
 }
 
-function clearLeftGuiNudge() {
-  if (leftGuiHoldTimer) {
-    clearTimeout(leftGuiHoldTimer);
-    leftGuiHoldTimer = null;
-  }
+function releaseLeftKey() {
   keysDown.left = false;
   if (gameGuiRoot) gameGuiRoot.classList.remove("gui-nudge-left");
 }
@@ -715,7 +850,8 @@ function clearLeftGuiNudge() {
 function returnToMenu() {
   gameRunning = false;
   countingDown = false;
-  clearLeftGuiNudge();
+  releaseLeftKey();
+  if (modeBannerOverlay) modeBannerOverlay.classList.add("hidden");
   countdownOverlay.classList.add("hidden");
   gameScreen.classList.add("hidden");
   menuScreen.classList.remove("hidden");
@@ -798,6 +934,7 @@ function loop(now = performance.now()) {
 
   updateHud();
   drawBoard();
+  updateWallGuiNudge();
   if (gameRunning) {
     requestAnimationFrame(loop);
   }
@@ -821,16 +958,8 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
   }
   if (e.key === "ArrowLeft") {
+    keysDown.left = true;
     movePiece(-1);
-    if (gameGuiRoot && !keysDown.left) {
-      keysDown.left = true;
-      leftGuiHoldTimer = setTimeout(() => {
-        leftGuiHoldTimer = null;
-        if (gameGuiRoot && gameRunning && !paused && keysDown.left) {
-          gameGuiRoot.classList.add("gui-nudge-left");
-        }
-      }, LEFT_GUI_HOLD_MS);
-    }
     e.preventDefault();
   }
   if (e.key === "ArrowRight") {
@@ -856,7 +985,7 @@ document.addEventListener("keydown", (e) => {
 
 document.addEventListener("keyup", (e) => {
   if (e.key === "ArrowDown") keysDown.down = false;
-  if (e.key === "ArrowLeft") clearLeftGuiNudge();
+  if (e.key === "ArrowLeft") releaseLeftKey();
 });
 
 usernameForm.addEventListener("submit", (event) => {
@@ -907,7 +1036,7 @@ resultOk.addEventListener("click", () => {
 
 window.addEventListener("blur", () => {
   keysDown.down = false;
-  clearLeftGuiNudge();
+  releaseLeftKey();
 });
 
 window.addEventListener("load", () => {
